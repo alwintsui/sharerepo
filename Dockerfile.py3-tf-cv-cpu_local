@@ -1,0 +1,50 @@
+# docker-keras - Keras in Docker with Python 3, TensorFlow  and OpenCV3.2.0 on CPU
+
+FROM daocloud.io/debian:stretch
+MAINTAINER alwintsui [http://github.com/alwintsui/] <alwintsui@gmail.com>
+
+COPY apt/sources_aliyun.list /etc/apt/sources.list
+
+# install debian packages
+ENV DEBIAN_FRONTEND noninteractive
+RUN apt-get update -qq \
+ && apt-get install --no-install-recommends -y \
+    build-essential \
+    g++ git pkg-config wget unzip gpg openssh-client \
+    python3 python3-dev python3-pip python3-setuptools python3-virtualenv python3-wheel \
+    libopenblas-base python3-numpy python3-scipy python3-h5py python3-yaml python3-pydot \
+    gfortran liblapack-dev libeigen3-dev \
+    libtbb2 libtbb-dev \ 
+    libgtk2.0-dev \
+    libv4l-0 libv4l-dev \
+    libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+    libavcodec-dev libavformat-dev libavresample-dev libswscale-dev libdc1394-22-dev \
+    libjpeg-dev libpng-dev libtiff5-dev libopenexr-dev  zlib1g-dev  \
+    libgtkglext1-dev libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev libglew2.0
+
+ARG TENSORFLOW_VERSION=1.3.0
+ARG TENSORFLOW_WHL=tensorflow-${TENSORFLOW_VERSION}-cp35-cp35m-linux_x86_64.whl
+COPY whl/${TENSORFLOW_WHL} /tmp/${TENSORFLOW_WHL}
+RUN pip3 --no-cache-dir install /tmp/${TENSORFLOW_WHL}
+
+ARG KERAS_VERSION=2.0.8
+ENV KERAS_BACKEND=tensorflow
+RUN pip3 --no-cache-dir install --no-dependencies git+https://github.com/fchollet/keras.git@${KERAS_VERSION}
+
+#opencv3.2.0
+ARG OPENCV_DEB=python3.5-opencv2_amd64.deb
+COPY deb/${OPENCV_DEB} /tmp/${OPENCV_DEB}
+RUN dpkg -i /tmp/${OPENCV_DEB}
+
+RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/*
+
+# quick test and dump package lists
+VOLUME /opt/data
+RUN python3 -c "import tensorflow; print(tensorflow.__version__); import cv2; print(cv2.__version__)" \
+&& dpkg-query -l > /opt/data/dpkg-query-l.txt \
+&& pip3 freeze > /opt/data/pip3-freeze.txt
+
+WORKDIR /opt/
+
+#sudo docker build -t alwintsui/keras_tfcv:1.0 -f Dockerfile.py3-tf-cv-cpu_local .
+#sudo docker run -it -v $HOME:/opt/data alwintsui/keras_tfcv:1.0
